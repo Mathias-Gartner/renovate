@@ -1,4 +1,6 @@
 import { logger } from '../../../logger';
+import * as hostRules from '../../../util/host-rules';
+import type { HttpOptions } from '../../../util/http/types';
 import { regEx } from '../../../util/regex';
 import { parseUrl } from '../../../util/url';
 import { api as versioning } from '../../versioning/nuget';
@@ -71,4 +73,12 @@ export function sortNugetVersions(a: string, b: string): number {
   } else {
     return 0;
   }
+}
+
+export function getHostOpts(url: string): HttpOptions {
+  const { token } = hostRules.find({
+    hostType: 'nuget',
+    url,
+  });
+  return token ? { headers: { 'X-NUGET-APIKEY': token } } : {};
 }

@@ -15,7 +15,12 @@ import { regEx } from '../../../util/regex';
 import { ensureTrailingSlash } from '../../../util/url';
 import { api as versioning } from '../../versioning/nuget';
 import type { Release, ReleaseResult } from '../types';
-import { massageUrl, removeBuildMeta, sortNugetVersions } from './common';
+import {
+  getHostOpts,
+  massageUrl,
+  removeBuildMeta,
+  sortNugetVersions,
+} from './common';
 import type {
   CatalogEntry,
   CatalogPage,
@@ -51,7 +56,9 @@ export class NugetV3Api {
       );
       // istanbul ignore else: currently not testable
       if (!servicesIndexRaw) {
-        servicesIndexRaw = (await http.getJson<ServicesIndexRaw>(url)).body;
+        servicesIndexRaw = (
+          await http.getJson<ServicesIndexRaw>(url, getHostOpts(url))
+        ).body;
         await packageCache.set(
           NugetV3Api.cacheNamespace,
           responseCacheKey,
@@ -131,7 +138,10 @@ export class NugetV3Api {
     let items = catalogPage.items;
     if (!items) {
       const url = catalogPage['@id'];
-      const catalogPageFull = await http.getJson<CatalogPage>(url);
+      const catalogPageFull = await http.getJson<CatalogPage>(
+        url,
+        getHostOpts(url),
+      );
       items = catalogPageFull.body.items;
     }
     return items.map(({ catalogEntry }) => catalogEntry);
@@ -145,7 +155,10 @@ export class NugetV3Api {
   ): Promise<ReleaseResult | null> {
     const baseUrl = feedUrl.replace(regEx(/\/*$/), '');
     const url = `${baseUrl}/${pkgName.toLowerCase()}/index.json`;
-    const packageRegistration = await http.getJson<PackageRegistration>(url);
+    const packageRegistration = await http.getJson<PackageRegistration>(
+      url,
+      getHostOpts(url),
+    );
     const catalogPages = packageRegistration.body.items || [];
     const catalogPagesQueue = catalogPages.map(
       (page) => (): Promise<CatalogEntry[]> => this.getCatalogEntry(http, page),
@@ -210,7 +223,7 @@ export class NugetV3Api {
           // TODO: types (#22198)
           latestStable
         }/${pkgName.toLowerCase()}.nuspec`;
-        const metaresult = await http.get(nuspecUrl);
+        const metaresult = await http.get(nuspecUrl, getHostOpts(nuspecUrl));
         const nuspec = new XmlDocument(metaresult.body);
         const sourceUrl = nuspec.valueWithPath('metadata.repository@url');
         if (sourceUrl) {
@@ -290,7 +303,7 @@ export class NugetV3Api {
       cacheDir,
       `${packageName}.${packageVersion}`,
     );
-    const readStream = http.stream(nupkgUrl);
+    const readStream = http.stream(nupkgUrl, getHostOpts(nupkgUrl));
     try {
       const writeStream = fs.createCacheWriteStream(nupkgFile);
       await fs.pipeline(readStream, writeStream);
