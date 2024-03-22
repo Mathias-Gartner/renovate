@@ -1,4 +1,5 @@
-import { sortNugetVersions } from './common';
+import { getHttpOpts, sortNugetVersions } from './common';
+import { hostRules } from '~test/util';
 
 describe('modules/datasource/nuget/common', () => {
   it.each`
@@ -24,4 +25,18 @@ describe('modules/datasource/nuget/common', () => {
       expect(res).toBe(result);
     },
   );
+
+  it('creates HttpOptions with token as API key', () => {
+    hostRules.add({ hostType: 'nuget', token: 'testtoken' });
+    const url = 'https://example.test';
+    const res = getHttpOpts(url);
+    expect(res).toEqual({ headers: { 'X-NUGET-APIKEY': 'testtoken' } });
+  });
+
+  it('creates empty HttpOptions for empty token', () => {
+    hostRules.clear();
+    const url = 'https://example.test';
+    const res = getHttpOpts(url);
+    expect(res).toEqual({});
+  });
 });
